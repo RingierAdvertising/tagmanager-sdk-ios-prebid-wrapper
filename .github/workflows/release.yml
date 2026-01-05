@@ -41,12 +41,28 @@ jobs:
           chmod +x scripts/buildPrebidSPM.sh
           ./scripts/buildPrebidSPM.sh
 
+      - name: Find built framework
+        id: find_framework
+        working-directory: prebid-mobile-ios
+        run: |
+          echo "Searching for PrebidMobile.xcframework..."
+          find . -name "PrebidMobile.xcframework" -type d
+          
+          FRAMEWORK_PATH=$(find . -name "PrebidMobile.xcframework" -type d | head -1)
+          if [ -z "$FRAMEWORK_PATH" ]; then
+            echo "Error: PrebidMobile.xcframework not found!"
+            exit 1
+          fi
+          
+          echo "Found framework at: $FRAMEWORK_PATH"
+          echo "framework_path=$FRAMEWORK_PATH" >> $GITHUB_OUTPUT
+
       - name: Prepare XCFrameworks
         run: |
           mkdir -p output
           
-          # Copy built PrebidMobile.xcframework
-          cp -R prebid-mobile-ios/generated/PrebidMobile.xcframework output/
+          # Copy built PrebidMobile.xcframework from discovered path
+          cp -R "prebid-mobile-ios/${{ steps.find_framework.outputs.framework_path }}" output/PrebidMobile.xcframework
           
           # Copy OMSDK_Prebidorg.xcframework from Frameworks directory
           cp -R prebid-mobile-ios/Frameworks/OMSDK_Prebidorg.xcframework output/
