@@ -76,14 +76,33 @@ jobs:
           PREBID_CHECKSUM: ${{ steps.checksums.outputs.prebid_checksum }}
           OMSDK_CHECKSUM: ${{ steps.checksums.outputs.omsdk_checksum }}
         run: |
-          # Update version in URLs (replace the version between /download/ and /PrebidMobile or /OMSDK)
-          sed -i '' "s|/download/[^/]*/PrebidMobile|/download/$VERSION/PrebidMobile|g" Package.swift
-          sed -i '' "s|/download/[^/]*/OMSDK|/download/$VERSION/OMSDK|g" Package.swift
-          
-          # Update checksums - find and replace the checksum values
-          # First occurrence is PrebidMobile, second is OMSDK
-          sed -i '' "0,/checksum: \".*\"/s/checksum: \".*\"/checksum: \"$PREBID_CHECKSUM\"/" Package.swift
-          sed -i '' "0,/checksum: \"$PREBID_CHECKSUM\"/! {0,/checksum: \".*\"/s/checksum: \".*\"/checksum: \"$OMSDK_CHECKSUM\"/}" Package.swift
+          cat > Package.swift << EOF
+          // swift-tools-version:5.7
+          import PackageDescription
+
+          let package = Package(
+              name: "PrebidMobileWrapper",
+              platforms: [.iOS(.v12)],
+              products: [
+                  .library(
+                      name: "PrebidMobile",
+                      targets: ["PrebidMobileTarget", "OMSDK_Prebidorg"]
+                  )
+              ],
+              targets: [
+                  .binaryTarget(
+                      name: "PrebidMobileTarget",
+                      url: "https://github.com/RingierAdvertising/tagmanager-sdk-ios-prebid-wrapper/releases/download/$VERSION/PrebidMobile.xcframework.zip",
+                      checksum: "$PREBID_CHECKSUM"
+                  ),
+                  .binaryTarget(
+                      name: "OMSDK_Prebidorg",
+                      url: "https://github.com/RingierAdvertising/tagmanager-sdk-ios-prebid-wrapper/releases/download/$VERSION/OMSDK_Prebidorg.xcframework.zip",
+                      checksum: "$OMSDK_CHECKSUM"
+                  )
+              ]
+          )
+          EOF
           
           echo "Updated Package.swift:"
           cat Package.swift
