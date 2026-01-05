@@ -38,8 +38,8 @@ jobs:
       - name: Build PrebidMobile.xcframework
         working-directory: prebid-mobile-ios
         run: |
-          chmod +x scripts/buildPrebidSPM.sh
-          ./scripts/buildPrebidSPM.sh
+          chmod +x scripts/buildPrebidMobile.sh
+          ./scripts/buildPrebidMobile.sh
 
       - name: Find built framework
         id: find_framework
