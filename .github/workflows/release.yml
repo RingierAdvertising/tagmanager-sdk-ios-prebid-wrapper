@@ -47,8 +47,8 @@ jobs:
 
           ls -la
           
-          # Copy built PrebidMobile.xcframework from generated/output
-          cp -R prebid-mobile-ios/generated/output/PrebidMobile.xcframework output/
+          # Copy built XCPrebidMobile.xcframework from generated/output (renamed to PrebidMobile for SPM)
+          cp -R prebid-mobile-ios/generated/output/XCPrebidMobile.xcframework output/PrebidMobile.xcframework
           
           # Copy OMSDK_Prebidorg.xcframework from Frameworks directory
           cp -R prebid-mobile-ios/Frameworks/OMSDK_Prebidorg.xcframework output/
