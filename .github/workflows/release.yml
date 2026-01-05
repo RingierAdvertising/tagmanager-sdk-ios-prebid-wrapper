@@ -44,6 +44,8 @@ jobs:
       - name: Prepare XCFrameworks
         run: |
           mkdir -p output
+
+          ls -la
           
           # Copy built PrebidMobile.xcframework from generated/output
           cp -R prebid-mobile-ios/generated/output/PrebidMobile.xcframework output/
