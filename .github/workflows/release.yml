@@ -1,0 +1,138 @@
+name: Build and Release Prebid XCFrameworks
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Prebid SDK version to build (e.g., 3.2.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write
+
+env:
+  PREBID_REPO: prebid/prebid-mobile-ios
+
+jobs:
+  build-and-release:
+    runs-on: macos-14
+    steps:
+      - name: Checkout wrapper repository
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Checkout prebid-mobile-ios
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.PREBID_REPO }}
+          ref: ${{ inputs.version }}
+          path: prebid-mobile-ios
+
+      - name: Setup Xcode
+        uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: latest-stable
+
+      - name: Build PrebidMobile.xcframework
+        working-directory: prebid-mobile-ios
+        run: |
+          chmod +x scripts/buildPrebidSPM.sh
+          ./scripts/buildPrebidSPM.sh
+
+      - name: Prepare XCFrameworks
+        run: |
+          mkdir -p output
+          
+          # Copy built PrebidMobile.xcframework
+          cp -R prebid-mobile-ios/generated/PrebidMobile.xcframework output/
+          
+          # Copy OMSDK_Prebidorg.xcframework from Frameworks directory
+          cp -R prebid-mobile-ios/Frameworks/OMSDK_Prebidorg.xcframework output/
+          
+          # Zip the frameworks for SPM binary targets
+          cd output
+          zip -r PrebidMobile.xcframework.zip PrebidMobile.xcframework
+          zip -r OMSDK_Prebidorg.xcframework.zip OMSDK_Prebidorg.xcframework
+
+      - name: Calculate checksums
+        id: checksums
+        run: |
+          PREBID_CHECKSUM=$(shasum -a 256 output/PrebidMobile.xcframework.zip | awk '{print $1}')
+          OMSDK_CHECKSUM=$(shasum -a 256 output/OMSDK_Prebidorg.xcframework.zip | awk '{print $1}')
+          
+          echo "prebid_checksum=$PREBID_CHECKSUM" >> $GITHUB_OUTPUT
+          echo "omsdk_checksum=$OMSDK_CHECKSUM" >> $GITHUB_OUTPUT
+          
+          echo "PrebidMobile checksum: $PREBID_CHECKSUM"
+          echo "OMSDK checksum: $OMSDK_CHECKSUM"
+
+      - name: Update Package.swift
+        env:
+          VERSION: ${{ inputs.version }}
+          PREBID_CHECKSUM: ${{ steps.checksums.outputs.prebid_checksum }}
+          OMSDK_CHECKSUM: ${{ steps.checksums.outputs.omsdk_checksum }}
+        run: |
+          # Update version in URLs (replace the version between /download/ and /PrebidMobile or /OMSDK)
+          sed -i '' "s|/download/[^/]*/PrebidMobile|/download/$VERSION/PrebidMobile|g" Package.swift
+          sed -i '' "s|/download/[^/]*/OMSDK|/download/$VERSION/OMSDK|g" Package.swift
+          
+          # Update checksums - find and replace the checksum values
+          # First occurrence is PrebidMobile, second is OMSDK
+          sed -i '' "0,/checksum: \".*\"/s/checksum: \".*\"/checksum: \"$PREBID_CHECKSUM\"/" Package.swift
+          sed -i '' "0,/checksum: \"$PREBID_CHECKSUM\"/! {0,/checksum: \".*\"/s/checksum: \".*\"/checksum: \"$OMSDK_CHECKSUM\"/}" Package.swift
+          
+          echo "Updated Package.swift:"
+          cat Package.swift
+
+      - name: Commit and tag
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          
+          git add Package.swift
+          git commit -m "Release $VERSION"
+          git tag "$VERSION"
+          git push origin master --tags
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ inputs.version }}
+          name: Release ${{ inputs.version }}
+          body: |
+            ## Prebid Mobile iOS SDK v${{ inputs.version }}
+            
+            This release wraps [prebid-mobile-ios v${{ inputs.version }}](https://github.com/prebid/prebid-mobile-ios/releases/tag/${{ inputs.version }}).
+            
+            ### Checksums
+            - `PrebidMobile.xcframework.zip`: `${{ steps.checksums.outputs.prebid_checksum }}`
+            - `OMSDK_Prebidorg.xcframework.zip`: `${{ steps.checksums.outputs.omsdk_checksum }}`
+            
+            ### Integration
+            Add this package to your Xcode project via Swift Package Manager.
+          files: |
+            output/PrebidMobile.xcframework.zip
+            output/OMSDK_Prebidorg.xcframework.zip
+          draft: false
+          prerelease: false
+
+      - name: Write to workflow summary
+        run: |
+          echo "## Release Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Successfully released Prebid Mobile SDK v${{ inputs.version }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Changes Made" >> $GITHUB_STEP_SUMMARY
+          echo "- Updated \`Package.swift\` with new version and checksums" >> $GITHUB_STEP_SUMMARY
+          echo "- Created git tag \`${{ inputs.version }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "- Published GitHub Release with XCFrameworks" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Checksums" >> $GITHUB_STEP_SUMMARY
+          echo "| Framework | Checksum |" >> $GITHUB_STEP_SUMMARY
+          echo "|-----------|----------|" >> $GITHUB_STEP_SUMMARY
+          echo "| PrebidMobile | \`${{ steps.checksums.outputs.prebid_checksum }}\` |" >> $GITHUB_STEP_SUMMARY
+          echo "| OMSDK_Prebidorg | \`${{ steps.checksums.outputs.omsdk_checksum }}\` |" >> $GITHUB_STEP_SUMMARY
