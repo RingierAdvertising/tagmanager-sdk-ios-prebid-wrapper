@@ -13,13 +13,13 @@ let package = Package(
     targets: [
         .binaryTarget(
             name: "PrebidMobileTarget",
-            url: "https://github.com/RingierAdvertising/tagmanager-sdk-ios-prebid-wrapper/releases/download/3.2.0/PrebidMobile.xcframework.zip",
-            checksum: "69b64fd4741e9c3c41f7f82b97b7526821f65cd69d9f3250e006779e373ed7ba"
+            url: "https://github.com/RingierAdvertising/tagmanager-sdk-ios-prebid-wrapper/releases/download/3.3.0/PrebidMobile.xcframework.zip",
+            checksum: "851b4037c9dc67aa675835f4e663df174b9aa3a1b93eb110b229f3a1a1e92daf"
         ),
         .binaryTarget(
             name: "OMSDK_Prebidorg",
-            url: "https://github.com/RingierAdvertising/tagmanager-sdk-ios-prebid-wrapper/releases/download/3.2.0/OMSDK_Prebidorg.xcframework.zip",
-            checksum: "353417ffee0e0ce52b1b3211b997d56a6e30b2325599345df0080c5f9027f334"
+            url: "https://github.com/RingierAdvertising/tagmanager-sdk-ios-prebid-wrapper/releases/download/3.3.0/OMSDK_Prebidorg.xcframework.zip",
+            checksum: "5e8ef5e13566d18f83a925e6218f5b675abe17b87fae6bda1a86ccf3dd210ed8"
         )
     ]
 )
